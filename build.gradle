@@ -2,7 +2,7 @@ plugins {
   id 'java-library'
 
   // To create a fat jar build/libs/options-all.jar, run: ./gradlew shadowJar
-  id 'com.github.johnrengelman.shadow' version '7.0.0'
+  id 'com.github.johnrengelman.shadow' version '7.1.2'
 
   // Formatting is disabled due to poor handling of type annotations; wait until
   // this issue is fixed: https://github.com/google/google-java-format/issues/5
@@ -13,7 +13,7 @@ plugins {
   id("net.ltgt.errorprone") version "2.0.2"
 
   // Checker Framework pluggable type-checking
-  id 'org.checkerframework' version '0.5.24'
+  id 'org.checkerframework' version '0.6.7'
 }
 
 repositories {
@@ -24,11 +24,11 @@ dependencies {
   implementation 'org.plumelib:reflection-util:1.0.4'
   implementation 'org.apache.commons:commons-text:1.9'
   implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.12.0'
-  implementation 'io.github.classgraph:classgraph:4.8.115'
+  implementation 'io.github.classgraph:classgraph:4.8.138'
 
-  errorprone 'com.google.errorprone:error_prone_core:2.9.0'
+  errorprone 'com.google.errorprone:error_prone_core:2.10.0'
 
-  testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
+  testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
   testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
 }
 
@@ -64,7 +64,8 @@ dependencies {
   errorproneJavac("com.google.errorprone:javac:9+181-r4173-1")
 }
 tasks.withType(JavaCompile).configureEach {
-  options.compilerArgs << "-Xlint:all,-processing" << "-Werror"
+  // "-classfile" is because of classgraph and https://bugs.openjdk.java.net/browse/JDK-8190452
+  options.compilerArgs << "-Xlint:all,-processing,-classfile" << "-Werror"
   options.errorprone {
     disable("ReferenceEquality") // Use Interning Checker instead
     disable("StringSplitter") // obscure case isn't likely
@@ -146,6 +147,9 @@ dependencies {
   requireJavadoc "org.plumelib:require-javadoc:1.0.2"
 }
 task requireJavadoc(type: JavaExec) {
+  // Gradle resolves requireJavadoc's Option dependency to the jar built by this project,
+  // so declare an explicit dependency on jar.
+  dependsOn jar
   description = 'Ensures that Javadoc documentation exists.'
   mainClass = "org.plumelib.javadoc.RequireJavadoc"
   classpath = configurations.requireJavadoc
