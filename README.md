@@ -12,7 +12,9 @@ of sync with the rest of the program.
 
 The programmer does not have to write any code, only declare and document
 variables. For each field that you want to set from a command-line
-argument, you write Javadoc and an `@Option` annotation. Then, the field is
+argument, you write Javadoc and an
+[`@Option`](http://plumelib.org/options/api/org/plumelib/options/Option.html)
+annotation. Then, the field is
 automatically set from a command-line option of the same name, and usage
 messages and printed documentation are generated automatically.
 
@@ -30,12 +32,17 @@ In a Gradle buildfile, write
 ```
 dependencies {
   if (JavaVersion.current() == JavaVersion.VERSION_1_8) {
-    implementation 'org.plumelib:options:1.0.5'
+    implementation 'org.plumelib:options:1.0.6'
   } else {
-    implementation 'org.plumelib:options:2.0.0'
+    implementation 'org.plumelib:options:2.0.3'
   }
 }
 ```
+
+That's it!
+
+To update user documentation after an option or its documentation has changed,
+use a rule like this:
 
 ```
 task updateUserOptions(type: Javadoc, dependsOn: 'assemble') {
@@ -46,7 +53,7 @@ task updateUserOptions(type: Javadoc, dependsOn: 'assemble') {
   options.memberLevel = JavadocMemberLevel.PRIVATE
   options.docletpath = project.sourceSets.main.runtimeClasspath as List
   options.doclet = "org.plumelib.options.OptionsDoclet"
-  options.addStringOption("docfile", "${projectDir}/src/main/java/org/plumelib/multiversioncontrol/MultiVersionControl.java")
+  options.addStringOption("docfile", "${projectDir}/path/to/Main.java")
   options.addStringOption("format", "javadoc")
   options.addStringOption("i", "-quiet")
   options.noTimestamp(false)
@@ -54,7 +61,7 @@ task updateUserOptions(type: Javadoc, dependsOn: 'assemble') {
 }
 ```
 
-Other build systems are [similar](https://search.maven.org/artifact/org.plumelib/options/2.0.0/jar).
+Other build systems are [similar](https://search.maven.org/artifact/org.plumelib/options/2.0.3/jar).
 
 
 ## Alternatives ##

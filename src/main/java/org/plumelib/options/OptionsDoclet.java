@@ -53,6 +53,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.RequiresNonNull;
 import org.checkerframework.checker.signature.qual.BinaryName;
 import org.checkerframework.checker.signature.qual.FullyQualifiedName;
+import org.checkerframework.checker.signedness.qual.Signed;
 import org.plumelib.reflection.Signatures;
 
 /**
@@ -290,7 +291,9 @@ public class OptionsDoclet implements Doclet {
         try {
           Constructor<?> c = clazz.getDeclaredConstructor();
           c.setAccessible(true);
-          objs.add(c.newInstance(new Object[0]));
+          @SuppressWarnings("signedness:assignment")
+          @Signed Object signedObj = c.newInstance(new Object[0]);
+          objs.add(signedObj);
         } catch (Exception e) {
           System.out.println("Classpath:");
           for (URI uri : new ClassGraph().getClasspathURIs()) {
@@ -454,7 +457,7 @@ public class OptionsDoclet implements Doclet {
             @Override
             public boolean process(String option, List<String> arguments) {
               assert arguments.size() == 1;
-              String outFileName = arguments.get(0);
+              outFileName = arguments.get(0);
               // TODO: move to later and centralize.
               if (docFile != null && outFileName != null && new File(outFileName).equals(docFile)) {
                 printError("docfile must be different from outfile");
@@ -517,34 +520,6 @@ public class OptionsDoclet implements Doclet {
           });
 
   /**
-   * Given a command-line option of this doclet, returns the number of arguments you must specify on
-   * the command line for the given option. Returns 0 if the argument is not recognized. This method
-   * is automatically invoked by Javadoc.
-   *
-   * @param option the command-line option
-   * @return the number of command-line arguments needed when using the option
-   * @see <a
-   *     href="https://docs.oracle.com/javase/8/docs/technotes/guides/javadoc/doclet/overview.html">Doclet
-   *     overview</a>
-   */
-  public static int optionLength(String option) {
-    if (option.equals("-help")) {
-      System.out.println(USAGE);
-      return 1;
-    }
-    if (option.equals("-i") || option.equals("-classdoc") || option.equals("-singledash")) {
-      return 1;
-    }
-    if (option.equals("-docfile")
-        || option.equals("-outfile")
-        || option.equals("-format")
-        || option.equals("-d")) {
-      return 2;
-    }
-    return 0;
-  }
-
-  /**
    * Sets variables that can only be set after all command-line options have been processed. Isuses
    * errors and halts if any command-line options are incompatible with one another.
    */
@@ -575,6 +550,7 @@ public class OptionsDoclet implements Doclet {
       hasError = true;
     }
     if (hasError) {
+      System.err.println(USAGE);
       System.exit(1);
     }
   }
@@ -615,6 +591,8 @@ public class OptionsDoclet implements Doclet {
    */
   public void write() throws Exception {
     PrintWriter out;
+    // `output()` is called here because it might throw an exception; if called after `out` is set,
+    // that exception might prevent `out` from being closed.
     String output = output();
 
     if (outFile != null) {
@@ -660,43 +638,42 @@ public class OptionsDoclet implements Doclet {
   @RequiresNonNull("docFile")
   private String newDocFileText() throws Exception {
     StringJoiner b = new StringJoiner(lineSep);
-    BufferedReader doc = Files.newBufferedReader(docFile.toPath(), UTF_8);
-    String docline;
-    boolean replacing = false;
-    boolean replacedOnce = false;
+    try (BufferedReader doc = Files.newBufferedReader(docFile.toPath(), UTF_8)) {
+      String docline;
+      boolean replacing = false;
+      boolean replacedOnce = false;
 
-    while ((docline = doc.readLine()) != null) {
-      if (replacing) {
-        if (docline.trim().equals(endDelim)) {
-          replacing = false;
-        } else {
-          continue;
-        }
-      }
-
-      b.add(docline);
-
-      if (!replacedOnce && docline.trim().equals(startDelim)) {
-        if (formatJavadoc) {
-          int starIndex = docline.indexOf('*');
-          b.add(docline.substring(0, starIndex + 1));
-          String jdoc = optionsToJavadoc(starIndex, 100);
-          b.add(jdoc);
-          if (jdoc.endsWith("</ul>")) {
-            b.add(docline.substring(0, starIndex + 1));
+      while ((docline = doc.readLine()) != null) {
+        if (replacing) {
+          if (docline.trim().equals(endDelim)) {
+            replacing = false;
+          } else {
+            continue;
           }
-        } else {
-          b.add(optionsToHtml(0));
         }
-        replacedOnce = true;
-        replacing = true;
+
+        b.add(docline);
+
+        if (!replacedOnce && docline.trim().equals(startDelim)) {
+          if (formatJavadoc) {
+            int starIndex = docline.indexOf('*');
+            b.add(docline.substring(0, starIndex + 1));
+            String jdoc = optionsToJavadoc(starIndex, 100);
+            b.add(jdoc);
+            if (jdoc.endsWith("</ul>")) {
+              b.add(docline.substring(0, starIndex + 1));
+            }
+          } else {
+            b.add(optionsToHtml(0));
+          }
+          replacedOnce = true;
+          replacing = true;
+        }
+      }
+      if (!replacedOnce) {
+        System.err.println("Did not find start delimiter: " + startDelim);
       }
     }
-    if (!replacedOnce) {
-      System.err.println("Did not find start delimiter: " + startDelim);
-    }
-
-    doc.close();
     return b.toString();
   }
 
@@ -745,7 +722,8 @@ public class OptionsDoclet implements Doclet {
       if (optDoc != null) {
         String nameWithUnderscores = oi.longName.replace('-', '_');
         for (VariableElement fd : fields(optDoc)) {
-          if (fd.getSimpleName().toString().equals(nameWithUnderscores)) {
+          if (nameWithUnderscores.equals(
+              Options.fieldNameToOptionName(fd.getSimpleName().toString()))) {
             // If Javadoc for field is unavailable, then use the @Option
             // description in the documentation.
             DocCommentTree fieldComment = docTrees.getDocCommentTree(fd);
@@ -1052,6 +1030,9 @@ public class OptionsDoclet implements Doclet {
 
   /** Converts DocTree to a HTML string. . */
   static class DocCommentToHtmlVisitor extends SimpleDocTreeVisitor<Void, StringBuilder> {
+
+    /** Create a new DocCommentToHtmlVisitor. */
+    public DocCommentToHtmlVisitor() {}
 
     @Override
     protected Void defaultAction(DocTree node, StringBuilder sb) {
