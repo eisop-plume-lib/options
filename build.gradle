@@ -1,17 +1,17 @@
 plugins {
   id 'java-library'
 
-  // To create a fat jar build/libs/options-all.jar, run: ./gradlew shadowJar
+  // To create a fat jar build/libs/...-all.jar, run: ./gradlew shadowJar
   id 'com.github.johnrengelman.shadow' version '7.1.2'
 
   // Code formatting; defines targets "spotlessApply" and "spotlessCheck"
-  id "com.diffplug.spotless" version "6.12.0"
+  id 'com.diffplug.spotless' version '6.15.0'
 
   // Error Prone linter
-  id("net.ltgt.errorprone") version "3.0.1"
+  id('net.ltgt.errorprone') version '3.0.1'
 
   // Checker Framework pluggable type-checking
-  id 'org.checkerframework' version '0.6.20'
+  id 'org.checkerframework' version '0.6.23'
 }
 
 repositories {
@@ -19,20 +19,20 @@ repositories {
 }
 
 dependencies {
-  implementation 'org.plumelib:reflection-util:1.0.5'
+  implementation 'io.github.classgraph:classgraph:4.8.154'
+  implementation 'org.apache.commons:commons-lang3:3.12.0'
   implementation 'org.apache.commons:commons-text:1.10.0'
-  implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.12.0'
-  implementation 'io.github.classgraph:classgraph:4.8.151'
+  implementation 'org.plumelib:reflection-util:1.0.6'
 
-  testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.1'
+  testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
   testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
 }
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-
 // To upload to Maven Central, see instructions in the file.
 apply from: "${buildscript.sourceFile.parent}/gradle/mavencentral.gradle"
+
+sourceCompatibility = 11
+targetCompatibility = 11
 
 // Work around https://github.com/johnrengelman/shadow/issues/324
 configurations {
@@ -46,10 +46,10 @@ dependencies {
 configurations.compileClasspath.extendsFrom configurations.toolsJar
 
 test {
-    useJUnitPlatform {
-        includeEngines 'junit-jupiter'
-        excludeEngines 'junit-vintage'
-    }
+  useJUnitPlatform {
+    includeEngines 'junit-jupiter'
+    excludeEngines 'junit-vintage'
+  }
 }
 
 spotless {
@@ -63,26 +63,34 @@ spotless {
     endWithNewline()
   }
   java {
-    targetExclude("**/WeakIdentityHashMap.java")
+    targetExclude('**/WeakIdentityHashMap.java')
     googleJavaFormat()
     formatAnnotations()
+  }
+  groovyGradle {
+    target '**/*.gradle'
+    greclipse()  // which formatter Spotless should use to format .gradle files.
+    indentWithSpaces(2)
+    trimTrailingWhitespace()
+    // endWithNewline() // Don't want to end empty files with a newline
   }
 }
 
 /// Error Prone linter
 
 dependencies {
-  errorprone("com.google.errorprone:error_prone_core:2.16")
+  errorprone('com.google.errorprone:error_prone_core:2.18.0')
 }
 tasks.withType(JavaCompile).configureEach {
+  // "-processing" avoids javac warning "No processor claimed any of these annotations".
   // "-classfile" is because of classgraph and https://bugs.openjdk.java.net/browse/JDK-8190452
-  options.compilerArgs << "-Xlint:all,-processing,-classfile" << "-Werror"
+  options.compilerArgs << '-Xlint:all,-processing,-classfile' << '-Werror'
   options.errorprone {
     enabled = JavaVersion.current() != JavaVersion.VERSION_1_8
-    disable("ReferenceEquality") // Use Interning Checker instead
-    disable("StringSplitter") // obscure case isn't likely
-    disable("AnnotateFormatMethod") // Error Prone doesn't know about Checker Framework @FormatMethod
-    disable("UseCorrectAssertInTests") // https://github.com/typetools/checker-framework/issues/3345
+    disable('ReferenceEquality') // Use Interning Checker instead.
+    disable('StringSplitter') // Obscure case isn't likely.
+    disable('AnnotateFormatMethod') // Error Prone doesn't know about Checker Framework @FormatMethod
+    disable('UseCorrectAssertInTests') // https://github.com/typetools/checker-framework/issues/3345
   }
 }
 
@@ -116,21 +124,17 @@ checkerFramework {
     '-AcheckPurityAnnotations',
     '-ArequirePrefixInWarningSuppressions',
     '-AwarnUnneededSuppressions',
-    // `com.sun.javadoc` is deprecated and superseded by `jdk.javadoc.doclet`.
-    //  `jdk.javadoc.doclet` only exists in Java 9 and later, so switching to it means losing support for Java 8.
-    // Classes are imported by OptionsDoclet and therefore this warning can't be suppressed there.
-    '-Xlint:-removal',
     '-AnoJreVersionCheck',
   ]
 }
 
 // To use a locally-built Checker Framework, run gradle with "-PcfLocal".
-if (project.hasProperty("cfLocal")) {
-  def cfHome = String.valueOf(System.getenv("CHECKERFRAMEWORK"))
+if (project.hasProperty('cfLocal')) {
+  def cfHome = String.valueOf(System.getenv('CHECKERFRAMEWORK'))
   dependencies {
-    compileOnly files(cfHome + "/checker/dist/checker-qual.jar")
-    testCompileOnly files(cfHome + "/checker/dist/checker-qual.jar")
-    checkerFramework files(cfHome + "/checker/dist/checker.jar")
+    compileOnly files(cfHome + '/checker/dist/checker-qual.jar')
+    testCompileOnly files(cfHome + '/checker/dist/checker-qual.jar')
+    checkerFramework files(cfHome + '/checker/dist/checker.jar')
   }
 }
 
@@ -145,7 +149,7 @@ javadoc {
   }
   doLast {
     ant.replaceregexp(match:"@import url\\('resources/fonts/dejavu.css'\\);\\s*", replace:'',
-      flags:'g', byline:true) {
+    flags:'g', byline:true) {
       fileset(dir: destinationDir)
     }
   }
@@ -153,7 +157,7 @@ javadoc {
 check.dependsOn javadoc
 
 task javadocWeb(type: Javadoc) {
-  description "Upload API documentation to website."
+  description 'Upload API documentation to website.'
   source = sourceSets.main.allJava
   destinationDir = file("/cse/web/research/plumelib/${project.name}/api")
   classpath = project.sourceSets.main.compileClasspath
@@ -161,6 +165,10 @@ task javadocWeb(type: Javadoc) {
     options.addStringOption('source', '8')
   }
   doLast {
+    ant.replaceregexp(match:"@import url\\('resources/fonts/dejavu.css'\\);\\s*", replace:'',
+    flags:'g', byline:true) {
+      fileset(dir: destinationDir)
+    }
     // Set permissions
     project.exec {
       commandLine('chgrp', '-R',  'plse_www', "/cse/web/research/plumelib/${project.name}/api")
@@ -175,16 +183,16 @@ configurations {
   requireJavadoc
 }
 dependencies {
-  requireJavadoc "org.plumelib:require-javadoc:1.0.6"
+  requireJavadoc 'org.plumelib:require-javadoc:1.0.6'
 }
 task requireJavadoc(type: JavaExec) {
   // Gradle resolves requireJavadoc's Option dependency to the jar built by this project,
   // so declare an explicit dependency on jar.
   dependsOn jar
   description = 'Ensures that Javadoc documentation exists.'
-  mainClass = "org.plumelib.javadoc.RequireJavadoc"
+  mainClass = 'org.plumelib.javadoc.RequireJavadoc'
   classpath = configurations.requireJavadoc
-  args "src/main/java"
+  args 'src/main/java'
 }
 check.dependsOn requireJavadoc
 javadocWeb.dependsOn requireJavadoc
@@ -193,6 +201,6 @@ javadocWeb.dependsOn requireJavadoc
 
 /* Make Emacs TAGS table */
 task tags(type: Exec) {
-  description "Run etags to create an Emacs TAGS table"
-  commandLine "bash", "-c", "find src/ -name '*.java' | sort | xargs etags"
+  description 'Run etags to create an Emacs TAGS table'
+  commandLine 'bash', '-c', "find src/ -name '*.java' | sort | xargs etags"
 }
