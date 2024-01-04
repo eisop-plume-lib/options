@@ -97,7 +97,7 @@ apply plugin: 'org.checkerframework'
 dependencies {
   compileOnly 'io.github.eisop:checker-qual:3.42.0-eisop1'
   testCompileOnly 'io.github.eisop:checker-qual:3.42.0-eisop1'
-  checkerFramework 'io.github.eisop:checker:3.34.0-eisop1'
+  checkerFramework 'io.github.eisop:checker:3.42.0-eisop1'
 }
 
 checkerFramework {
@@ -128,7 +128,7 @@ checkerFramework {
 // To use a snapshot version of the Checker Framework.
 if (false) {
   // TODO: Change the above test to false when CF is released.
-  ext.checkerFrameworkVersion = '3.39.0-eisop-SNAPSHOT'
+  ext.checkerFrameworkVersion = '3.42.0-eisop1-SNAPSHOT'
   dependencies {
     compileOnly "io.github.eisop:checker-qual:${checkerFrameworkVersion}"
     testCompileOnly "io.github.eisop:checker-qual:${checkerFrameworkVersion}"
