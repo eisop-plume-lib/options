@@ -86,20 +86,29 @@ import org.checkerframework.dataflow.qual.SideEffectFree;
  *   public static double temperature = 75.0;
  *
  *   public static void main(String[] args) {
+ *
+ *     // variant 1
  *     MyProgram myInstance = new MyProgram();
  *     Options options = new Options("MyProgram [options] infile outfile",
  *                                   myInstance, MyUtilityClass.class);
  *     String[] remainingArgs = options.parse(true, args);
+ *
+ *     // variant 2
+ *     Options options = new Options("MyProgram [options] infile outfile",
+ *                                   MyProgram.class, MyUtilityClass.class);
+ *     String[] remainingArgs = options.parse(true, args);
+ *
  *     ...
  *   }
  * }
  * </pre>
  *
- * <p>In the code above, the call to {@link #parse(boolean, String[])} sets fields in object {@code
- * myInstance} and sets static fields in class {@code MyUtilityClass}. It returns the original
- * command line, with all options removed. If a command-line argument is incorrect, it prints a
- * usage message and terminates the program. The program can also explicitly create or print a usage
- * message; see {@link #usage(String...)} and {@link #printUsage()}.
+ * <p>In the first variant code above, the call to {@link #parse(boolean, String[])} sets fields in
+ * object {@code myInstance} and sets static fields in class {@code MyUtilityClass}. (In the second
+ * variant, it sets static fields in both classes.) It returns the original command line, with all
+ * options removed. If a command-line argument is incorrect, it prints a usage message and
+ * terminates the program. The program can also explicitly create or print a usage message; see
+ * {@link #usage(String...)} and {@link #printUsage()}.
  *
  * <p>For examples of generated HTML documentation, see the documentation for <a
  * href="https://types.cs.washington.edu/plume-lib/api/plume/Lookup.html#command-line-options">Lookup</a>,
@@ -123,9 +132,10 @@ import org.checkerframework.dataflow.qual.SideEffectFree;
  * <p>A user of your program supplies command-line options in the form <span style="white-space:
  * nowrap;">"--name=value"</span> or <span style="white-space: nowrap;">"-name value"</span>. The
  * value (after the "=" or " ") is mandatory for all options except booleans. Booleans are set to
- * true if no value is specified. Booleans support <span style="white-space:
+ * true if no value is specified.
+ * <!-- Booleans support <span style="white-space:
  * nowrap;">"--no-<em>optionname</em>"</span> which is equivalent to <span style="white-space:
- * nowrap;">"--optionname=false"</span>.
+ * nowrap;">"--optionname=false"</span>. -->
  *
  * <p>A user may provide an option multiple times on the command line. If the field is a list, each
  * entry is added to the list. If the field is not a list, then only the last occurrence is used
@@ -242,9 +252,9 @@ import org.checkerframework.dataflow.qual.SideEffectFree;
  *   <li>Short options are only supported as separate entries (e.g., <span style="white-space:
  *       nowrap;">"-a -b"</span>) and not as a single group (e.g., <span style="white-space:
  *       nowrap;">"-ab"</span>).
- *   <li>If you have a boolean option named exactly "long", you must use <span style="white-space:
+ *   <li>If you have a boolean option named "long", you must use <span style="white-space:
  *       nowrap;">"--long=false"</span> to turn it off; <span style="white-space:
- *       nowrap;">"--no-long"</span> is not supported.
+ *       nowrap;">"--no-long"</span> is not yet supported.
  * </ul>
  *
  * @see org.plumelib.options.Option
@@ -750,9 +760,6 @@ public class Options {
           throw new Error("non-static option " + f + " in class " + obj);
         }
 
-        @SuppressWarnings(
-            "nullness:assignment" // new C(underInit): @UnderInitialization; @Initialized is safe
-        )
         @Initialized OptionInfo oi = new OptionInfo(f, option, isClass ? null : obj, unpublicized);
         options.add(oi);
 
@@ -971,7 +978,7 @@ public class Options {
       argList.add(arg);
     }
 
-    String[] argsArray = argList.toArray(new String[argList.size()]);
+    String[] argsArray = argList.toArray(new String[0]);
     return argsArray;
   }
 
@@ -1064,7 +1071,7 @@ public class Options {
         ii++;
       }
     }
-    String[] result = nonOptions.toArray(new String[nonOptions.size()]);
+    String[] result = nonOptions.toArray(new String[0]);
     return result;
   }
 
@@ -1769,6 +1776,9 @@ public class Options {
     try {
       return field.get(obj);
     } catch (Exception e) {
+      // TODO: Accessibility problems could be related to the field or to the class itself.
+      // This should diagnose those problems and report them (though accessibility is not the only
+      // possible problem here).
       throw new Error("Unexpected error reading " + field + " in " + obj, e);
     }
   }
