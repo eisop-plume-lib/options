@@ -50,8 +50,8 @@ dependencies {
 apply from: "${buildscript.sourceFile.parent}/gradle/mavencentral.gradle"
 
 java {
-  sourceCompatibility = JavaVersion.VERSION_1_8
-  targetCompatibility = JavaVersion.VERSION_1_8
+  sourceCompatibility = JavaVersion.VERSION_11
+  targetCompatibility = JavaVersion.VERSION_11
 }
 
 // Work around https://github.com/johnrengelman/shadow/issues/324
@@ -98,9 +98,8 @@ if (isJava11orHigher) {
 
 tasks.withType(JavaCompile).configureEach {
   // "-processing" avoids javac warning "No processor claimed any of these annotations".
-  // "-Xlint:-options" is because of JDK 21 warning "source value 8 is obsolete..."
   // "-classfile" is because of classgraph and https://bugs.openjdk.java.net/browse/JDK-8190452
-  options.compilerArgs << '-Xlint:all,-processing,-options,-classfile' << '-Werror'
+  options.compilerArgs << '-Xlint:all,-processing,-classfile' << '-Werror'
   options.errorprone.enabled = isJava11orHigher
   options.errorprone {
     disable('ExtendsObject')  // Incorrect when using the Checker Framework
@@ -159,8 +158,7 @@ checkerFramework {
     'org.checkerframework.common.initializedfields.InitializedFieldsChecker',
   ]
   extraJavacArgs = [
-    // No "'-Werror'" because of JDK 21 warning "source value 8 is obsolete..."
-    // '-Werror',
+    '-Werror',
     '-AcheckPurityAnnotations',
     '-ArequirePrefixInWarningSuppressions',
     '-AwarnRedundantAnnotations',
@@ -174,11 +172,10 @@ checkerFramework {
 
 // Turn Javadoc warnings into errors.
 javadoc {
-  // No "'-Werror'" because of JDK 21 warning "source value 8 is obsolete..."
-  // options.addStringOption('Xwerror', '-Xdoclint:all')
+  options.addStringOption('Xwerror')
   options.addStringOption('Xdoclint:all', '-quiet')
   options.addStringOption('private', '-quiet')
-  options.addStringOption('source', '8')
+  options.addStringOption('source', '11')
   doLast {
     ant.replaceregexp(match:"@import url\\('resources/fonts/dejavu.css'\\);\\s*", replace:'',
     flags:'g', byline:true) {
@@ -193,7 +190,7 @@ task javadocWeb(type: Javadoc) {
   source = sourceSets.main.allJava
   destinationDir = file("/cse/web/research/plumelib/${project.name}/api")
   classpath = project.sourceSets.main.compileClasspath
-  options.addStringOption('source', '8')
+  options.addStringOption('source', '11')
   doLast {
     ant.replaceregexp(match:"@import url\\('resources/fonts/dejavu.css'\\);\\s*", replace:'',
     flags:'g', byline:true) {
