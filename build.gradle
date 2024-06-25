@@ -101,6 +101,7 @@ tasks.withType(JavaCompile).configureEach {
   // "-Xlint:-options" is because of JDK 21 warning "source value 8 is obsolete..."
   // "-classfile" is because of classgraph and https://bugs.openjdk.java.net/browse/JDK-8190452
   options.compilerArgs << '-Xlint:all,-processing,-options,-classfile' << '-Werror'
+  options.errorprone.enabled = isJava11orHigher
   options.errorprone {
     disable('ExtendsObject')  // Incorrect when using the Checker Framework
     disable('ReferenceEquality') // Use Interning Checker instead.
