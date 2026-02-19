@@ -262,6 +262,7 @@ import org.checkerframework.dataflow.qual.SideEffectFree;
  * @see org.plumelib.options.Unpublicized
  * @see org.plumelib.options.OptionsDoclet
  */
+@SuppressWarnings("PMD.BooleanGetMethodName")
 public class Options {
 
   // User-settable fields
@@ -274,7 +275,7 @@ public class Options {
   public boolean useSingleDash = false;
 
   /**
-   * Whether to parse options after a non-option command-line argument. If false, option processing
+   * If true, parse options after a non-option command-line argument. If false, option processing
    * stops at the first non-option command-line argument. If true, options specified even at the end
    * of the command line are processed.
    *
@@ -283,7 +284,7 @@ public class Options {
   private boolean parseAfterArg = true;
 
   /**
-   * Whether to treat arguments to lists as space-separated. Defaults to false.
+   * If true, treat arguments to lists as space-separated. Defaults to false.
    *
    * <p>When true, an argument to an option of list type is split, on whitespace, into multiple
    * arguments each of which is added to the list. When false, each argument to an option of list
@@ -318,6 +319,7 @@ public class Options {
   private Class<?> mainClass = Void.TYPE;
 
   /** List of all of the defined options. */
+  @SuppressWarnings("PMD.AvoidFieldNameMatchingTypeName")
   private final List<OptionInfo> options = new ArrayList<>();
 
   /** Map from short or long option names (with leading dashes) to option information. */
@@ -358,6 +360,7 @@ public class Options {
   private static String lineSeparator = System.lineSeparator();
 
   /** Information about an option. */
+  @SuppressWarnings("PMD.TooManyFields")
   class OptionInfo {
 
     /** What variable the option sets. */
@@ -409,7 +412,7 @@ public class Options {
      * If true, the default value string for this option will be excluded from OptionsDoclet
      * documentation.
      */
-    boolean noDocDefault = false;
+    boolean noDocDefault;
 
     /** If the option is a list, this references that list. */
     @MonotonicNonNull List<Object> list = null;
@@ -441,7 +444,7 @@ public class Options {
      * @param field the field to set
      * @param option the option
      * @param obj the object whose field will be set; if obj is null, the field must be static
-     * @param unpublicized whether the option is unpublicized
+     * @param unpublicized true if the option is unpublicized
      */
     @SuppressWarnings({
       "nullness:argument", // field is static when object is null
@@ -561,9 +564,9 @@ public class Options {
     }
 
     /**
-     * Return whether or not this option has a required argument.
+     * Returns true if this option has a required argument.
      *
-     * @return whether or not this option has a required argument
+     * @return true if this option has a required argument
      */
     public boolean argumentRequired() {
       Class<?> type = field.getType();
@@ -590,7 +593,7 @@ public class Options {
     }
 
     /**
-     * Return a one-line description of the option.
+     * Returns a one-line description of the option.
      *
      * @return a one-line description of the option
      */
@@ -638,7 +641,7 @@ public class Options {
      * @param unpublicized if true, this option group is unpublicized
      */
     OptionGroupInfo(String name, boolean unpublicized) {
-      optionList = new ArrayList<OptionInfo>();
+      optionList = new ArrayList<>();
       this.name = name;
       this.unpublicized = unpublicized;
     }
@@ -649,7 +652,7 @@ public class Options {
      * @param optionGroup the option group to copy
      */
     OptionGroupInfo(OptionGroup optionGroup) {
-      optionList = new ArrayList<OptionInfo>();
+      optionList = new ArrayList<>();
       this.name = optionGroup.value();
       this.unpublicized = optionGroup.unpublicized();
     }
@@ -738,7 +741,7 @@ public class Options {
             System.err.printf(
                 "  with annotations %s%n", Arrays.toString(f.getDeclaredAnnotations()));
           }
-        } catch (java.lang.ArrayStoreException e) {
+        } catch (ArrayStoreException e) {
           if (e.getMessage() != null
               && Objects.equals(
                   e.getMessage(), "sun.reflect.annotation.TypeNotPresentExceptionProxy")) {
@@ -911,7 +914,7 @@ public class Options {
    * this to false is useful to avoid processing arguments that are actually options/arguments for
    * another program that this one will invoke. The default is true.
    *
-   * @param val whether to parse arguments after a non-option command-line argument
+   * @param val if true, parse arguments after a non-option command-line argument
    */
   public void setParseAfterArg(boolean val) {
     parseAfterArg = val;
@@ -924,7 +927,7 @@ public class Options {
    * options will be parsed with a double dash prefix as in <span style="white-space:
    * nowrap;">{@code --longOption}</span>.
    *
-   * @param val whether to parse long options with a single dash, as in <span style="white-space:
+   * @param val if true, parse long options with a single dash, as in <span style="white-space:
    *     nowrap;">{@code -longOption}</span>
    */
   public void setUseSingleDash(boolean val) {
@@ -940,9 +943,10 @@ public class Options {
    *
    * @param args the command line to be tokenized
    * @return a string array analogous to the argument to {@code main}
+   * @throws ArgException if the command line contains an unclosed quote
    */
-  // TODO: should this throw some exceptions?
-  public static String[] tokenize(String args) {
+  @SuppressWarnings("PMD.AvoidReassigningLoopVariables")
+  public static String[] tokenize(String args) throws ArgException {
 
     // Split the args string on whitespace boundaries accounting for quoted
     // strings.
@@ -956,6 +960,9 @@ public class Options {
         ii++;
         while ((ii < args.length()) && (args.charAt(ii) != ch)) {
           arg += args.charAt(ii++);
+        }
+        if (ii >= args.length()) {
+          throw new ArgException("Unclosed quote in command line: " + args);
         }
         arg += ch;
       } else if (Character.isWhitespace(ch)) {
@@ -989,6 +996,7 @@ public class Options {
    * @return all non-option arguments
    * @throws ArgException if the command line contains unknown option or misused options
    */
+  @SuppressWarnings("PMD.AvoidReassigningLoopVariables")
   public String[] parse(String[] args) throws ArgException {
 
     List<String> nonOptions = new ArrayList<>();
@@ -1038,12 +1046,16 @@ public class Options {
         }
         OptionInfo oi = nameToOption.get(argName);
         if (oi == null) {
-          StringBuilder msg = new StringBuilder();
-          msg.append(String.format("unknown option name '%s' in arg '%s'", argName, arg));
-          if (false) { // for debugging
+          StringBuilder msg = new StringBuilder(64);
+          msg.append("unknown option name '")
+              .append(argName)
+              .append("' in arg '")
+              .append(arg)
+              .append('\'');
+          if (debugEnabled) {
             msg.append("; known options:");
             for (String optionName : sortedKeySet(nameToOption)) {
-              msg.append(" ");
+              msg.append(' ');
               msg.append(optionName);
             }
           }
@@ -1246,6 +1258,7 @@ public class Options {
    * @param showUnpublicized if true, include unpublicized options in the output
    * @return the formatted options
    */
+  @SuppressWarnings("PMD.UnusedAssignment") // false positive, `hasListOption` is read elsewhere
   private String formatOptions(List<OptionInfo> optList, int maxLength, boolean showUnpublicized) {
     StringJoiner buf = new StringJoiner(lineSeparator);
     for (OptionInfo oi : optList) {
@@ -1270,7 +1283,7 @@ public class Options {
   }
 
   /**
-   * Return the length of the longest synopsis message in a list of options. Useful for aligning
+   * Returns the length of the longest synopsis message in a list of options. Useful for aligning
    * options in usage strings.
    *
    * @param optList the options whose synopsis messages to measure
@@ -1295,7 +1308,7 @@ public class Options {
   // generate HTML documentation.
 
   /**
-   * Return whether option groups are being used.
+   * Returns true if option groups are being used.
    *
    * @return true if option groups are being used
    */
@@ -1305,7 +1318,7 @@ public class Options {
   }
 
   /**
-   * Return whether single dashes are being used.
+   * Returns true if single dashes are being used.
    *
    * @return true if single dashes are being used
    */
@@ -1368,7 +1381,7 @@ public class Options {
     }
     // Argument values are required for everything but booleans
     if (argValue == null) {
-      if ((type != Boolean.TYPE) || (type != Boolean.class)) {
+      if ((type == Boolean.TYPE) || (type == Boolean.class)) {
         argValue = "true";
       } else {
         throw new ArgException("Value required for option " + argName);
@@ -1388,7 +1401,6 @@ public class Options {
             throw new ArgException(
                 "Value \"%s\" for argument %s is not a boolean", argValue, argName);
           }
-          argValue = val ? "true" : "false";
           // System.out.printf ("Setting %s to %s%n", argName, val);
           f.setBoolean(oi.obj, val);
         } else if (type == Byte.TYPE) {
@@ -1461,7 +1473,7 @@ public class Options {
         // argument value.
         if (oi.list != null) {
           if (spaceSeparatedLists) {
-            String[] aarr = argValue.split(" +");
+            String[] aarr = argValue.trim().split(" +", -1);
             for (String aval : aarr) {
               Object val = getRefArg(oi, argName, aval);
               oi.list.add(val); // uncheck cast
@@ -1499,7 +1511,10 @@ public class Options {
     Object val;
     try {
       if (oi.constructor != null) {
-        @SuppressWarnings("signedness:assignment") // assume command-line numeric args are signed
+        @SuppressWarnings({
+          "signedness:assignment", // assume command-line numeric args are signed
+          "PMD.UnnecessaryVarargsArrayCreation" // false positive due to overloads
+        })
         @Signed Object signedVal = oi.constructor.newInstance(new Object[] {argValue});
         val = signedVal;
       } else if (oi.baseType.isEnum()) {
@@ -1549,7 +1564,7 @@ public class Options {
   }
 
   /**
-   * Return a short name for the specified type for use in messages. This is usually the lowercase
+   * Returns a short name for the specified type for use in messages. This is usually the lowercase
    * simple name of the type, but there are special cases (for files, regular expressions, enums,
    * ...).
    *
@@ -1624,7 +1639,7 @@ public class Options {
   }
 
   /**
-   * Return a description of all of the known options. Each option is described on its own line in
+   * Returns a description of all of the known options. Each option is described on its own line in
    * the output.
    *
    * @return a description of all of the known options
