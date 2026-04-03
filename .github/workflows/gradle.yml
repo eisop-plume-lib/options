@@ -31,7 +31,10 @@ jobs:
           check-latest: true
           cache: 'gradle'
       - name: Use JDK 21 for Gradle
-        run: mkdir -p ~/.gradle && echo "org.gradle.java.home=$JAVA_HOME_21_X64" >> ~/.gradle/gradle.properties
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.java.home=$JAVA_HOME_21_X64" >> ~/.gradle/gradle.properties
+          echo "testJavaExecutable=$JAVA_HOME/bin/java" >> ~/.gradle/gradle.properties
       - name: Version information
         run: java -version && ./gradlew -version
       - name: ./gradlew build
