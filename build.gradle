@@ -67,6 +67,9 @@ configurations {
 configurations.compileClasspath.extendsFrom(configurations.toolsJar)
 
 test {
+  if (project.hasProperty("testJavaExecutable")) {
+    executable = project.property("testJavaExecutable").toString()
+  }
   useJUnitPlatform {
     includeEngines("junit-jupiter")
     excludeEngines("junit-vintage")
