@@ -146,7 +146,6 @@ public class TestOptions {
     assert t.input_path != null
         : "@AssumeAssertion(nullness): annotated JDK doesn't contain toFile() yet";
     assert t.input_path.toString().equals("/tmp/TestOptions2.txt");
-    ;
   }
 
   /** Test class for option alias testing. */
